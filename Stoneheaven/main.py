@@ -10,9 +10,14 @@ from conf import CONTACTS_COMMAND
 from keyboard import kb
 from keyboard import get_inline_keyboard
 from conf import MEDIA_COMMAND
+import aiomysql
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from datetime import datetime
+from database import connect_to_db
 
+storage = MemoryStorage()
 bot = aiogram.Bot(TOKEN_API)
-dp = aiogram.Dispatcher(bot)
+dp = aiogram.Dispatcher(bot, storage=storage)
 
 # Initialize the bot
 
@@ -43,6 +48,69 @@ async def server_info(message: types.Message):
                            parse_mode="HTML",
                            reply_markup=get_inline_keyboard())
     await message.delete()
+
+#Функция и
+@dp.message_handler(text='Информация об игроках 👀')
+async def player_info(message: types.Message, state: FSMContext):
+    msg = await bot.send_message(chat_id=message.from_user.id,
+                           text="Пожалуйста, введите имя игрока")
+    await message.delete()
+    await state.set_state('await_input_nickname')
+    
+@dp.message_handler(state="await_input_nickname")
+async def input_name(message: types.Message, state: FSMContext):
+    nickname = message.text
+    await state.update_data(nickname=nickname)
+    await state.reset_state()
+    
+    conn = await connect_to_db()
+    
+    async with conn.cursor() as cursor:
+        sql = "SELECT * FROM authme WHERE username=%s"
+        await cursor.execute(sql, (nickname,))
+        result = await cursor.fetchone()
+        
+    conn.close()
+    
+    STUCTURED_MESSAGE = """
+    <b>Информация о пользователе:</b>
+    <b>Ник: {username}</b>
+    <b>IP адрес: {ip}</b>
+    <b>Последний вход: {lastlogin}</b>
+    <b>Дата регистрации: {regdate}</b>
+    <b>Статус: {isLogged}</b>
+    """
+
+    if result:
+        logged_dict = {'0':'Оффлайн ❌', '1':'Онлайн ✅'}
+        timestamp_regdate = result['regdate'] / 1000
+        regdate = datetime.fromtimestamp(timestamp_regdate)
+        formatted_date_regdate = regdate.strftime("%Y-%m-%d %H:%M:%S")
+    
+        timestamp_lastlogin = result['lastlogin'] / 1000
+        regdate_lastlogin = datetime.fromtimestamp(timestamp_lastlogin)
+        formatted_date_lastlogin = regdate_lastlogin.strftime("%Y-%m-%d %H:%M:%S")
+        #Dictionary, якщо 1 - Онлайн, 0 - Оффлайн, якщо немає співпадінь, то повертає пусту лінійку
+        #тому пишемо ''
+        is_logged_text = logged_dict.get(str(result['isLogged']), '')
+        message_text = STUCTURED_MESSAGE.format(
+            username=result['username'],
+            realname=result['realname'],
+            ip=result['ip'],
+            lastlogin=formatted_date_lastlogin,
+            regdate=formatted_date_regdate,
+            isLogged=is_logged_text
+            )
+        await bot.send_message(chat_id=message.chat.id, 
+                               text=message_text, 
+                               parse_mode='HTML')
+    else:
+        await bot.send_message(chat_id=message.chat.id, 
+                               text='<b>Пользователь не найден. Пожалуйста, проверьте учетные данные!</b>',
+                               parse_mode='HTML')
+        
+
+
 
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('info'))
 async def ikb_cb_handler(callback: types.CallbackQuery):

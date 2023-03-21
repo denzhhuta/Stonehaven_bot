@@ -10,4 +10,5 @@ def get_inline_keyboard() -> InlineKeyboardMarkup:
 
 kb = ReplyKeyboardMarkup(resize_keyboard=True)
 b1 = KeyboardButton(text="Информация сервера 📱")
-kb.add(b1)
+b2 = KeyboardButton(text="Информация об игроках 👀")
+kb.add(b1).add(b2)

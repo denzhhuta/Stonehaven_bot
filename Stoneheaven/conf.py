@@ -32,3 +32,8 @@ MEDIA_COMMAND = """
 """
 
 TOKEN_API = "6064195503:AAHL9SrKGWqdynJUqqIn04o9dJF8p4-nWVM"
+DB_HOST = "localhost"
+DB_USER = "root"
+DB_NAME = "stonehaven_database"
+DB_PASSWORD = "root1234"
+TOKEN_API = "6064195503:AAHL9SrKGWqdynJUqqIn04o9dJF8p4-nWVM"
