@@ -66,7 +66,11 @@ async def input_name(message: types.Message, state: FSMContext):
     conn = await connect_to_db()
     
     async with conn.cursor() as cursor:
-        sql = "SELECT * FROM authme WHERE username=%s"
+        #Якщо бещ COLLATE, то помилка
+        #pymysql.err.OperationalError: (1267, "Illegal mix of collations 
+        #(utf8mb3_general_ci,IMPLICIT) and (utf8mb4_general_ci,COERCIBLE) for operation '='")
+        sql = "SELECT * FROM authme WHERE username=%s COLLATE utf8mb4_general_ci"
+        #sql = "SELECT * FROM authme WHERE username=%s"
         await cursor.execute(sql, (nickname,))
         result = await cursor.fetchone()
         
