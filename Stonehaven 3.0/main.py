@@ -1,26 +1,33 @@
 import aiogram
+import aiomysql
+from email.message import EmailMessage
+from aiosmtplib import SMTP
 import time
 import os
 from aiogram import types, Bot, Dispatcher, executor
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.types import CallbackQuery
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from conf import MEDIA_COMMAND
 from conf import TOKEN_API
 from conf import CONTACTS_COMMAND
 from keyboard import kb
 from keyboard import get_inline_keyboard
-from conf import MEDIA_COMMAND
-import aiomysql
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from datetime import datetime
 from database import connect_to_db
+from database import get_user_info
+from database import is_valid_email
+from emails import generate_confirmation_code
+from emails import send_email
 
 storage = MemoryStorage()
 bot = aiogram.Bot(TOKEN_API)
 dp = aiogram.Dispatcher(bot, storage=storage)
 
-# Initialize the bot
-
+# class ProfileStatesGroup(StatesGroup):
+#     input_email = State()
+#     confirmation_code = State()
 
 async def on_startup(_):
     print("Bot was succesfully lauched!")
@@ -49,7 +56,6 @@ async def server_info(message: types.Message):
                            reply_markup=get_inline_keyboard())
     await message.delete()
 
-#Функция и
 @dp.message_handler(text='Информация об игроках 👀')
 async def player_info(message: types.Message, state: FSMContext):
     msg = await bot.send_message(chat_id=message.from_user.id,
@@ -63,61 +69,55 @@ async def input_name(message: types.Message, state: FSMContext):
     await state.update_data(nickname=nickname)
     await state.reset_state()
     
-    conn = await connect_to_db()
+    message_text = await get_user_info(nickname)
+    await bot.send_message(chat_id=message.from_user.id,
+                           text=message_text,
+                           parse_mode="HTML")
     
-    async with conn.cursor() as cursor:
-        #Якщо бещ COLLATE, то помилка
-        #pymysql.err.OperationalError: (1267, "Illegal mix of collations 
-        #(utf8mb3_general_ci,IMPLICIT) and (utf8mb4_general_ci,COERCIBLE) for operation '='")
-        sql = "SELECT * FROM authme WHERE username=%s COLLATE utf8mb4_general_ci"
-        #sql = "SELECT * FROM authme WHERE username=%s"
-        await cursor.execute(sql, (nickname,))
-        result = await cursor.fetchone()
-        
-    conn.close()
+@dp.message_handler(commands=['forgot_password'])
+async def forgot_password_handle(message: types.Message, state:FSMContext):
+    await message.reply("<b>Пожалуйста, введите email-адресс вашего аккаунта</b>",
+                        parse_mode="HTML")
     
-    STUCTURED_MESSAGE = """
-    <b>Информация о пользователе:</b>
-    <b>Ник: {username}</b>
-    <b>IP адрес: {ip}</b>
-    <b>Последний вход: {lastlogin}</b>
-    <b>Дата регистрации: {regdate}</b>
-    <b>Статус: {isLogged}</b>
-    """
+    await state.set_state('input_email')
 
-    if result:
-        #dick, для isLogged
-        logged_dict = {'0':'Оффлайн ❌', '1':'Онлайн ✅'}
-        #перетворення часу, бо в бд з 1970 в мілісекундах
-        timestamp_regdate = result['regdate'] / 1000
-        regdate = datetime.fromtimestamp(timestamp_regdate)
-        formatted_date_regdate = regdate.strftime("%Y-%m-%d %H:%M:%S")
-        
-        timestamp_lastlogin = result['lastlogin'] / 1000
-        regdate_lastlogin = datetime.fromtimestamp(timestamp_lastlogin)
-        formatted_date_lastlogin = regdate_lastlogin.strftime("%Y-%m-%d %H:%M:%S")
-        #Dictionary, якщо 1 - Онлайн, 0 - Оффлайн, якщо немає співпадінь, то повертає пусту лінійку
-        #тому пишемо ''
-        is_logged_text = logged_dict.get(str(result['isLogged']), '')
-        #форматуємо повідомлення 
-        message_text = STUCTURED_MESSAGE.format(
-            username=result['username'],
-            realname=result['realname'],
-            ip=result['ip'],
-            lastlogin=formatted_date_lastlogin,
-            regdate=formatted_date_regdate,
-            isLogged=is_logged_text
-            )
-        await bot.send_message(chat_id=message.chat.id, 
-                               text=message_text, 
-                               parse_mode='HTML')
-    else:
-        await bot.send_message(chat_id=message.chat.id, 
-                               text='<b>Пользователь не найден. Пожалуйста, проверьте учетные данные!</b>',
-                               parse_mode='HTML')        
+@dp.message_handler(state="input_email")
+async def input_name(message: types.Message, state: FSMContext):
+    email = message.text
+    await state.update_data(email=email)    
+    await state.reset_state()
+    if not await is_valid_email(email):
+          await bot.send_message(chat_id=message.from_user.id,
+                                text="<b>Извините, электронная почта недействительна \n. Перепроверьте правильность ввода!</b>",
+                                parse_mode="HTML")
+          return
+    
+    confirmation_code = await generate_confirmation_code()
+    print(confirmation_code)
+    await send_email(email, confirmation_code)
+# @dp.message_handler(state=)
+# async def forgot_password_handle(message: types.Message, state:FSMContext):
+#     await message.reply("<b>Пожалуйста, введите email-адресс вашего аккаунта</b>",
+#                         parse_mode="HTML")    
 
-
-
+    
+#     #email = await bot.wait_for("message")
+    
+#     if not is_valid_email(email.text):
+#         await bot.send_message(chat_id=message.from_user.id,
+#                                text="<b>Извините, электронная почта недействительна \n. Перепроверьте правильность ввода!</b>",
+#                                parse_mode="HTML")
+#         return
+    
+#     confirmation_code = generate_confirmation_code()
+    
+#     await bot.send_message(chat_id=message.from_user.id,
+#                            text="Please check your email for the confirmation code and enter it here")
+    
+#     confirmation = await bot.wait_for("message")
+    
+    
+      
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('info'))
 async def ikb_cb_handler(callback: types.CallbackQuery):
  try:
