@@ -12,6 +12,7 @@ from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from conf import MEDIA_COMMAND
 from conf import TOKEN_API
 from conf import CONTACTS_COMMAND
+from conf import EMAIL_NOTIFY
 from keyboard import kb
 from keyboard import get_inline_keyboard
 from datetime import datetime
@@ -74,11 +75,11 @@ async def input_name(message: types.Message, state: FSMContext):
                            text=message_text,
                            parse_mode="HTML")
     
-@dp.message_handler(commands=['forgot_password'])
+@dp.message_handler(text='Восстановление пароля 🔧')
 async def forgot_password_handle(message: types.Message, state:FSMContext):
     await message.reply("<b>Пожалуйста, введите email-адресс вашего аккаунта</b>",
                         parse_mode="HTML")
-    
+    await message.delete()
     await state.set_state('input_email')
 
 @dp.message_handler(state="input_email")
@@ -89,28 +90,33 @@ async def input_name(message: types.Message, state: FSMContext):
     #await state.reset_state()
     if not await is_valid_email(email):
           await bot.send_message(chat_id=message.from_user.id,
-                                text="<b>Извините, электронная почта недействительна \n. Перепроверьте правильность ввода!</b>",
+                                text="<b>🙁 Извините, <em>электронная почта</em> недействительна!</b>\n\n<b>🔍 Перепроверьте правильность ввода!</b>",
                                 parse_mode="HTML")
+          await state.reset_state()
           return
     
     confirmation_code = await generate_confirmation_code()
-    print("CHINAAA " + confirmation_code)
+    #print("CHINAAA " + confirmation_code)
     await send_email(email, confirmation_code)
     await state.update_data(confirmation_code=confirmation_code)
     await state.set_state('confirmation_code_proof')
 
+    await bot.send_message(chat_id=message.from_user.id,                  
+                           text=EMAIL_NOTIFY,
+                           parse_mode="HTML")
+    
 @dp.message_handler(state="confirmation_code_proof")
 async def confirm_code(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         email = data.get('email')
         confirmation_code = data.get('confirmation_code')
     
-    print("China " + email) 
-    print("China " + confirmation_code) 
-
+    #print("China " + email) 
+    #print("China " + confirmation_code) 
+    
     if message.text != confirmation_code:
         await bot.send_message(chat_id=message.from_user.id,
-                               text="<b>Извините, код подтверждения недействительный. Перепроверьте правильность ввода!</b>",
+                               text="<b>🙁Извините, <em>код подтверждения</em> недействительный!</b>\n\n<b>🔍Перепроверьте правильность ввода!</b>",
                                parse_mode="HTML")
         await state.reset_state()
     else:
