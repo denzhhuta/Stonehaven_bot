@@ -40,17 +40,3 @@ async def send_email(email: str, confirmation_code: str):
 async def generate_confirmation_code() -> str:
     #Генерація рандомного коду
     return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
-
-async def is_valid_confirmation(confirmation_code: str, email: str, state: FSMContext) -> bool:
-    async with state.proxy() as data:
-        stored_code = data.get('confirmation_code')
-        stored_email = data.get('email')
-    print("\n" + stored_code)
-    print("\n" + stored_email)
-    print(confirmation_code)
-    print(email)
-    #and email == stored_email
-    if confirmation_code == stored_code and email == stored_email:
-        return True
-    else:
-        return False

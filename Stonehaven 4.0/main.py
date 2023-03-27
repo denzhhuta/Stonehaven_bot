@@ -20,7 +20,6 @@ from database import get_user_info
 from database import is_valid_email
 from emails import generate_confirmation_code
 from emails import send_email
-from emails import is_valid_confirmation
 
 storage = MemoryStorage()
 bot = aiogram.Bot(TOKEN_API)
@@ -109,43 +108,17 @@ async def confirm_code(message: types.Message, state: FSMContext):
     print("China " + email) 
     print("China " + confirmation_code) 
 
-    if not await is_valid_confirmation(confirmation_code, email, state):
+    if message.text != confirmation_code:
         await bot.send_message(chat_id=message.from_user.id,
                                text="<b>Извините, код подтверждения недействительный. Перепроверьте правильность ввода!</b>",
                                parse_mode="HTML")
+        await state.reset_state()
     else:
         await bot.send_message(chat_id=message.from_user.id,
                                text="<b>Код подтверждения действителен. Пароль сброшен.</b>",
                                parse_mode="HTML")
         await state.reset_state()
-    
-    
-
-    
-
-# @dp.message_handler(state=)
-# async def forgot_password_handle(message: types.Message, state:FSMContext):
-#     await message.reply("<b>Пожалуйста, введите email-адресс вашего аккаунта</b>",
-#                         parse_mode="HTML")    
-
-    
-#     #email = await bot.wait_for("message")
-    
-#     if not is_valid_email(email.text):
-#         await bot.send_message(chat_id=message.from_user.id,
-#                                text="<b>Извините, электронная почта недействительна \n. Перепроверьте правильность ввода!</b>",
-#                                parse_mode="HTML")
-#         return
-    
-#     confirmation_code = generate_confirmation_code()
-    
-#     await bot.send_message(chat_id=message.from_user.id,
-#                            text="Please check your email for the confirmation code and enter it here")
-    
-#     confirmation = await bot.wait_for("message")
-    
-    
-      
+          
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('info'))
 async def ikb_cb_handler(callback: types.CallbackQuery):
  try:
