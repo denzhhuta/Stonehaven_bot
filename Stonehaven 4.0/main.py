@@ -1,5 +1,8 @@
 import aiogram
 import aiomysql
+import hashlib
+from hashlib import sha256
+import secrets
 from email.message import EmailMessage
 from aiosmtplib import SMTP
 import time
@@ -121,10 +124,65 @@ async def confirm_code(message: types.Message, state: FSMContext):
         await state.reset_state()
     else:
         await bot.send_message(chat_id=message.from_user.id,
-                               text="<b>Код подтверждения действителен. Пароль сброшен.</b>",
+                               text="<b>Код подтверждения действителен. Введите новый пароль!</b>",
                                parse_mode="HTML")
+        await state.set_state('password_update_new')
+
+@dp.message_handler(state='password_update_new')
+async def password_update(message: types.Message, state: FSMContext):
+    salt = secrets.token_hex(8)
+    password = message.text
+    
+    if len(password) < 8:
+        await bot.send_message(chat_id=message.from_user.id,
+                                text="<b>Пароль слишком короткий!</b>",
+                                parse_mode="HTML")
+        #await state.update_data(salt=salt)
+        print(salt)
+        await bot.send_message(chat_id=message.from_user.id,
+                                text="<b>Пожалуйста, введите новый пароль (минимум 8 символов)</b>",
+                                parse_mode="HTML")
+        await state.set_state('password_update_new')
+        return
+    
+    await state.update_data(password=password, salt=salt)
+    
+    await bot.send_message(chat_id=message.from_user.id,
+                            text="<b>Пожалуйста, повторите новый пароль</b>",
+                            parse_mode="HTML")
+    await state.set_state('password_update_confirm')
+    
+@dp.message_handler(state='password_update_confirm')
+async def password_update(message: types.Message, state: FSMContext):   
+    confirm_password = message.text
+    #data = await state.get_data()
+    async with state.proxy() as data:
+        password = data.get('password')
+        salt = data.get('salt')
+    
+    if confirm_password == password:
+        hash_object = hashlib.sha256((salt + password).encode('utf-8'))
+        hex_dig = hash_object.hexdigest()
+        new_password = f"$SHA${salt}${hex_dig}"
+        print(new_password)
         await state.reset_state()
-          
+        await bot.send_message(chat_id=message.from_user.id,
+                                text="<b>Пароль успешно обновлен</b>",
+                                parse_mode="HTML")
+    else:
+        await bot.send_message(chat_id=message.from_user.id,
+                                text="<b>Пароли не совпадают, повторите попытку</b>",
+                                parse_mode="HTML")
+        await state.set_state('password_update_confirm')
+    
+    # print(salt)
+    # hash_object = hashlib.sha256((salt + password).encode('utf-8'))
+    # hex_dig = hash_object.hexdigest()
+    # new_password = f"$SHA${salt}${hex_dig}"
+    # print(new_password)
+    # await state.reset_state()
+
+    
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('info'))
 async def ikb_cb_handler(callback: types.CallbackQuery):
  try:

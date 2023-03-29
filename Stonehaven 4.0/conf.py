@@ -24,7 +24,7 @@ MEDIA_COMMAND = """
 
 - <b><a href="https://t.me/stonehavenrp">Telegram</a> ☎️</b>
 - <b><a href="https://www.youtube.com/channel/UC4wTrC4WZ8oByLpkojBd3KA">YouTube</a> 🎥</b>
-- <b><a href="https://stonehavenrp.com/">Сайт</a> ✉️</b>
+- <b><a href="http://stonehaven.lol">Сайт</a> ✉️</b>
 
 <b>🤩 Подписывайтесь на нас, чтобы быть в курсе последних новостей и мероприятий на сервере!</b>
 

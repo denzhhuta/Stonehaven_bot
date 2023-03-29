@@ -9,9 +9,8 @@ from conf import app_password
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
-#from main import confirmation_code
-#from main import email
 
+#функція надсилання повідомлення на пошту гравця
 async def send_email(email: str, confirmation_code: str):
     msg = EmailMessage()
     msg['Subject'] = 'Password Recovery'
@@ -23,6 +22,10 @@ async def send_email(email: str, confirmation_code: str):
                     username=sender_email, password=app_password) as smtp:
         await smtp.send_message(msg)
         
+#Генерація рандомного коду
+async def generate_confirmation_code() -> str:
+    return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
+
 # async def send_email(subject, body, sender, recipients, password):
 #     msg = EmailMessage()
 #     msg['Subject'] = subject
@@ -35,8 +38,3 @@ async def send_email(email: str, confirmation_code: str):
 #         await smtp.send_message(msg)
         
 # asyncio.run(send_email('Test Email', 'This is a test email', sender_email, 'denis.zhhuta@gmail.com', app_password))
-
-
-async def generate_confirmation_code() -> str:
-    #Генерація рандомного коду
-    return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))

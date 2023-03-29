@@ -22,7 +22,7 @@ async def connect_to_db():
         print("Connection to DataBase refused...")
         print(ex)
         
-#функція запиту з бази даних
+#функція запиту з бази даних (інформація про гравця)
 async def get_user_info(nickname):
     conn = await connect_to_db()
     async with conn.cursor() as cursor:
@@ -71,6 +71,7 @@ async def get_user_info(nickname):
     else:
         return '<b>Пользователь не найден. Пожалуйста, проверьте учетные данные!</b>'
 
+#Перевірка чи емейл валідний.
 async def is_valid_email(email):
     conn = await connect_to_db()
     async with conn.cursor() as cursor:
@@ -84,3 +85,10 @@ async def is_valid_email(email):
     else:
         return False
     
+#функція зміни паролю    
+async def new_password(hashed_password, email):
+    conn = await connect_to_db()
+    async with conn.cursor() as cursor:
+        sql = "UPDATE authme SET password =%s WHERE email=%s"
+        await cursor.execute(sql, (hashed_password, email,))
+    conn.close()
