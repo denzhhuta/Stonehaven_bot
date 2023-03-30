@@ -22,6 +22,7 @@ from datetime import datetime
 from database import connect_to_db
 from database import get_user_info
 from database import is_valid_email
+from database import new_password_db
 from emails import generate_confirmation_code
 from emails import send_email
 
@@ -159,16 +160,21 @@ async def password_update(message: types.Message, state: FSMContext):
     async with state.proxy() as data:
         password = data.get('password')
         salt = data.get('salt')
+        email = data.get('email')
     
     if confirm_password == password:
         hash_object = hashlib.sha256((salt + password).encode('utf-8'))
         hex_dig = hash_object.hexdigest()
-        new_password = f"$SHA${salt}${hex_dig}"
-        print(new_password)
-        await state.reset_state()
+        hashed_password = f"$SHA${salt}${hex_dig}"
+        print(hashed_password)
+        print(email)
+        print(password)
+        await new_password_db(hashed_password, email)
         await bot.send_message(chat_id=message.from_user.id,
                                 text="<b>Пароль успешно обновлен</b>",
                                 parse_mode="HTML")
+        await state.reset_state()
+
     else:
         await bot.send_message(chat_id=message.from_user.id,
                                 text="<b>Пароли не совпадают, повторите попытку</b>",

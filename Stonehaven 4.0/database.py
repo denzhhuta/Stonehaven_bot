@@ -86,9 +86,18 @@ async def is_valid_email(email):
         return False
     
 #функція зміни паролю    
-async def new_password(hashed_password, email):
-    conn = await connect_to_db()
-    async with conn.cursor() as cursor:
-        sql = "UPDATE authme SET password =%s WHERE email=%s"
-        await cursor.execute(sql, (hashed_password, email,))
-    conn.close()
+async def new_password_db(hashed_password, email):
+    try:
+        conn = await connect_to_db()
+        async with conn.cursor() as cursor:
+            sql = "UPDATE authme SET password = %s WHERE email = %s"
+            result = await cursor.execute(sql, (hashed_password, email))
+            if result == 0:
+                print(f"No rows were affected by the query for email {email}.")
+            else:
+                print(f"Password updated successfully for email {email}.")
+            await conn.commit()  # add this line to commit changes
+        conn.close()
+    except Exception as e:
+        print(f"An error occurred while updating the password for email {email}: {e}")
+
