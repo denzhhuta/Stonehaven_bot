@@ -34,9 +34,6 @@ dp = aiogram.Dispatcher(bot, storage=storage)
 #     input_email = State()
 #     confirmation_code = State()
 
-async def on_startup(_):
-    print("Bot was succesfully lauched!")
-
 @dp.message_handler(commands=['start']) 
 async def start_command(message: types.Message):
     first_name = message.from_user.first_name
@@ -90,7 +87,7 @@ async def forgot_password_handle(message: types.Message, state:FSMContext):
 async def input_name(message: types.Message, state: FSMContext):
     email = message.text
     await state.update_data(email=email)
-    print("CHINAAA " + email)    
+    #print("CHINAAA " + email)    
     #await state.reset_state()
     if not await is_valid_email(email):
           await bot.send_message(chat_id=message.from_user.id,
@@ -131,7 +128,6 @@ async def confirm_code(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state='password_update_new')
 async def password_update(message: types.Message, state: FSMContext):
-    salt = secrets.token_hex(8)
     password = message.text
     
     if len(password) < 8:
@@ -139,14 +135,13 @@ async def password_update(message: types.Message, state: FSMContext):
                                 text="<b>Пароль слишком короткий!</b>",
                                 parse_mode="HTML")
         #await state.update_data(salt=salt)
-        print(salt)
         await bot.send_message(chat_id=message.from_user.id,
                                 text="<b>Пожалуйста, введите новый пароль (минимум 8 символов)</b>",
                                 parse_mode="HTML")
         await state.set_state('password_update_new')
         return
     
-    await state.update_data(password=password, salt=salt)
+    await state.update_data(password=password)
     
     await bot.send_message(chat_id=message.from_user.id,
                             text="<b>Пожалуйста, повторите новый пароль</b>",
@@ -159,12 +154,11 @@ async def password_update(message: types.Message, state: FSMContext):
     #data = await state.get_data()
     async with state.proxy() as data:
         password = data.get('password')
-        salt = data.get('salt')
         email = data.get('email')
     
     if confirm_password == password:
-        hash_object = hashlib.sha256((salt + password).encode('utf-8'))
-        hex_dig = hash_object.hexdigest()
+        salt = secrets.token_hex(8)
+        hex_dig = hashlib.sha256((hashlib.sha256(password.encode('utf-8')).hexdigest() + salt).encode('utf-8')).hexdigest()
         hashed_password = f"$SHA${salt}${hex_dig}"
         print(hashed_password)
         print(email)
@@ -210,6 +204,4 @@ async def ikb_cb_handler(callback: types.CallbackQuery):
 
 
 if __name__ == '__main__':
-    executor.start_polling(dp, 
-                           on_startup=on_startup, 
-                           skip_updates=True)    
+    executor.start_polling(dp, skip_updates=True)    
