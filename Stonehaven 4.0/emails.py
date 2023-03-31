@@ -9,15 +9,22 @@ from conf import app_password
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 
-
 #функція надсилання повідомлення на пошту гравця
 async def send_email(email: str, confirmation_code: str):
+    html = f"""
+        <html>
+            <body>
+                <p style="font-weight:bold;">Ваш код подтверждения: {confirmation_code}</p>
+                <p style="font-size:12px;">С уважением, команда проекта Stonehaven.</p>
+            </body>
+        </html>
+    """
     msg = EmailMessage()
     msg['Subject'] = 'Password Recovery'
     msg['From'] = sender_email
     msg['To'] = email
-    msg.set_content(f'Your confirmation code is: {confirmation_code}')
-
+    msg.set_content(html, subtype='html')
+    
     async with SMTP(hostname='smtp.gmail.com', port=587, start_tls=True,
                     username=sender_email, password=app_password) as smtp:
         await smtp.send_message(msg)

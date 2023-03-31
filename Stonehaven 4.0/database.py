@@ -85,7 +85,8 @@ async def is_valid_email(email):
     else:
         return False
     
-#функція зміни паролю    
+#функція зміни паролю
+
 async def new_password_db(hashed_password, email):
     try:
         conn = await connect_to_db()
@@ -100,4 +101,28 @@ async def new_password_db(hashed_password, email):
         conn.close()
     except Exception as e:
         print(f"An error occurred while updating the password for email {email}: {e}")
+        
+# async def new_password_db(hashed_password, email):
+#     try:
+#         conn = await connect_to_db()
+#         async with conn.cursor() as cursor:
+#             now = datetime.datetime.now()
+            
+#             sql = "SELECT last_password_change FROM authme WHERE email = %s"
+#             await cursor.execute(sql, (email,))
+#             result = await cursor.fetchone()
+#             last_password_change = result[0] if result else None
+#             if last_password_change and now.date() == last_password_change.date():
+#                 return await bot.send_message(chat_id=message.from_user.id, text="Нельзя менять пароль чаще чем 1 раз на день!</b>", parse_mode="HTML")
+#             else:
+#                 sql = "UPDATE authme SET password = %s WHERE email = %s"
+#                 result = await cursor.execute(sql, (hashed_password, email))
+#                 if result == 0:
+#                     print(f"No rows were affected by the query for email {email}.")
+#                 else:
+#                  print(f"Password updated successfully for email {email}.")
+#                 await conn.commit()  # Обов'язково зробити коміт, щоб зберегти запис в базу даних!
+#         conn.close()
+#     except Exception as e:
+#         print(f"An error occurred while updating the password for email {email}: {e}")
 
