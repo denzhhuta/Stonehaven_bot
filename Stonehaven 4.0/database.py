@@ -1,5 +1,6 @@
 import aiomysql
 import aiogram
+import asyncio
 from datetime import datetime
 from conf import DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
 
@@ -97,11 +98,24 @@ async def new_password_db(hashed_password, email):
                 print(f"No rows were affected by the query for email {email}.")
             else:
                 print(f"Password updated successfully for email {email}.")
+                await logs_handler(email)
+                #print(result)
             await conn.commit()  # add this line to commit changes
         conn.close()
     except Exception as e:
         print(f"An error occurred while updating the password for email {email}: {e}")
         
+            
+async def logs_handler(email, counter=[0]):
+    counter[0] +=1
+    try:
+        with open('/Users/zgutadenis/Desktop/Stonehaven.project/Stonehaven_bot/Stonehaven 4.0/logs.txt', 'a') as f:
+            f.write("\n{counter}.Password updated successfully for email {email} at {time}".format(counter=counter, email=email, time=datetime.now().strftime("%Y-%m-%d %H:%M")))
+            
+    except Exception as e:
+            print(f"An error occurred while updating the password for email {email}: {e}")
+            f.write("\n{counter}An error occurred while updating the password for email {email}: {exception} at {time}".format(counter=counter, email=email, exception=e, time=datetime.now().strftime("%Y-%m-%d %H:%M")))
+    
 # async def new_password_db(hashed_password, email):
 #     try:
 #         conn = await connect_to_db()

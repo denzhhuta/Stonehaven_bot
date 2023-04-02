@@ -97,7 +97,7 @@ async def input_name(message: types.Message, state: FSMContext):
           return
     
     confirmation_code = await generate_confirmation_code()
-    #print("CHINAAA " + confirmation_code)
+    print("CHINAAA " + confirmation_code)
     await send_email(email, confirmation_code)
     await state.update_data(confirmation_code=confirmation_code)
     await state.set_state('confirmation_code_proof')
@@ -122,7 +122,7 @@ async def confirm_code(message: types.Message, state: FSMContext):
         await state.reset_state()
     else:
         await bot.send_message(chat_id=message.from_user.id,
-                               text="<b>Код подтверждения действителен. Введите новый пароль!</b>",
+                               text="<b>Код подтверждения действителен. Введите новый пароль!\nЕсли вы передумали менять пароль, напишите /cancel.</b>",
                                parse_mode="HTML")
         await state.set_state('password_update_new')
 
@@ -130,13 +130,20 @@ async def confirm_code(message: types.Message, state: FSMContext):
 async def password_update(message: types.Message, state: FSMContext):
     password = message.text
     
+    if str(password) == '/cancel':
+        await bot.send_message(chat_id=message.from_user.id,
+                               text="<b>Операция отменена!</b>",
+                               parse_mode="HTML")
+        await state.reset_state()
+        return
+            
     if len(password) < 8:
         await bot.send_message(chat_id=message.from_user.id,
                                 text="<b>Пароль слишком короткий!</b>",
                                 parse_mode="HTML")
         #await state.update_data(salt=salt)
         await bot.send_message(chat_id=message.from_user.id,
-                                text="<b>Пожалуйста, введите новый пароль (минимум 8 символов)</b>",
+                                text="<b>Пожалуйста, введите новый пароль (минимум 8 символов).</b>",
                                 parse_mode="HTML")
         await state.set_state('password_update_new')
         return
@@ -144,7 +151,7 @@ async def password_update(message: types.Message, state: FSMContext):
     await state.update_data(password=password)
     
     await bot.send_message(chat_id=message.from_user.id,
-                            text="<b>Пожалуйста, повторите новый пароль</b>",
+                            text="<b>Пожалуйста, повторите новый пароль!</b>",
                             parse_mode="HTML")
     await state.set_state('password_update_confirm')
     
@@ -156,13 +163,20 @@ async def password_update(message: types.Message, state: FSMContext):
         password = data.get('password')
         email = data.get('email')
     
+    if str(confirm_password) == '/cancel':
+        await bot.send_message(chat_id=message.from_user.id,
+                               text="<b>Операция отменена!</b>",
+                               parse_mode="HTML")
+        await state.reset_state()
+        return
+            
     if confirm_password == password:
         salt = secrets.token_hex(8)
         hex_dig = hashlib.sha256((hashlib.sha256(password.encode('utf-8')).hexdigest() + salt).encode('utf-8')).hexdigest()
         hashed_password = f"$SHA${salt}${hex_dig}"
-        print(hashed_password)
-        print(email)
-        print(password)
+        #print(hashed_password)
+        #print(email)
+        #print(password)
         await new_password_db(hashed_password, email)
         await bot.send_message(chat_id=message.from_user.id,
                                 text="<b>Пароль успешно обновлен</b>",
@@ -177,11 +191,10 @@ async def password_update(message: types.Message, state: FSMContext):
     
     # print(salt)
     # hash_object = hashlib.sha256((salt + password).encode('utf-8'))
-    # hex_dig = hash_object.hexdigest()
+    # hexdig = hash_object.hexdigest()
     # new_password = f"$SHA${salt}${hex_dig}"
     # print(new_password)
     # await state.reset_state()
-
     
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('info'))
 async def ikb_cb_handler(callback: types.CallbackQuery):
