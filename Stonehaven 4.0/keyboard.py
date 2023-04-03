@@ -1,12 +1,17 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, InlineKeyboardButton, InlineKeyboardMarkup
 
-def get_inline_keyboard() -> InlineKeyboardMarkup:
+def get_inline_keyboard_1() -> InlineKeyboardMarkup:
     ikb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton('Наши сойцсети 📱', callback_data='info_media'),
+        [InlineKeyboardButton('Наши соцсети 📱', callback_data='info_media'),
          InlineKeyboardButton('Контакты 🤖', callback_data='info_contacts')]
         ])
     return ikb
 
+def get_inline_keyboard_2() -> InlineKeyboardMarkup:
+    ikb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton('👉 Подписаться', url='https://t.me/+qJA3_fKo1pJmM2Ey')]
+    ])
+    return ikb
 
 kb = ReplyKeyboardMarkup(resize_keyboard=True)
 b1 = KeyboardButton(text="Информация сервера 📱")

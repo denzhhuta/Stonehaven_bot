@@ -63,15 +63,3 @@ async def send_email(email: str, confirmation_code: str):
 async def generate_confirmation_code() -> str:
     return ''.join(random.choice(string.ascii_uppercase + string.digits) for _ in range(6))
 
-# async def send_email(subject, body, sender, recipients, password):
-#     msg = EmailMessage()
-#     msg['Subject'] = subject
-#     msg['From'] = senders
-#     msg['To'] = recipients
-#     msg.set_content(body)
-
-#     async with SMTP(hostname='smtp.gmail.com', port=587, start_tls=True,
-#                     username=sender, password=password) as smtp:
-#         await smtp.send_message(msg)
-        
-# asyncio.run(send_email('Test Email', 'This is a test email', sender_email, 'denis.zhhuta@gmail.com', app_password))
