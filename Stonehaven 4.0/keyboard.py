@@ -3,8 +3,9 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemo
 def get_inline_keyboard_1() -> InlineKeyboardMarkup:
     ikb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton('Наши соцсети 📱', callback_data='info_media'),
-         InlineKeyboardButton('Контакты 🤖', callback_data='info_contacts')]
-        ])
+         InlineKeyboardButton('Контакты 🤖', callback_data='info_contacts')],
+        [InlineKeyboardButton('Онлайн сервера 📈', callback_data='info_online')]
+    ])
     return ikb
 
 def get_inline_keyboard_2() -> InlineKeyboardMarkup:

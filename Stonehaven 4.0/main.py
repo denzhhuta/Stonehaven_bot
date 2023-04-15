@@ -31,6 +31,7 @@ from database import is_valid_email
 from database import new_password_db
 from email_function import generate_confirmation_code
 from email_function import send_email
+from email_function import check_server
 
 #update_message_text - просто текст шо пише юзер
 #update.message.from_user - dict з username, last_name, is_bot and so on
@@ -61,7 +62,7 @@ class CheckSubscriptionUserMiddleware(BaseMiddleware):
                 user_id = this_user.id
                 #print(user_id)
                 check_user_in_channel = await bot.get_chat_member(CHANNEL_ID, user_id)
-                print(check_user_in_channel)
+                #print(check_user_in_channel)
                 #isinstance юзається щоб перевірити одне від іншого, в нашому випадку чи чек юзер іт ін ченел є мембер
                 #{"user": {"id": 6119267627, "is_bot": false, "first_name": "Maks", "username": "maksik42413", "language_code": "uk"}, "status": "member"}
                 if not isinstance(check_user_in_channel, ChatMemberMember) and not isinstance(check_user_in_channel, ChatMemberOwner) and not isinstance(check_user_in_channel, ChatMemberAdministrator):
@@ -235,6 +236,14 @@ async def ikb_cb_handler(callback: types.CallbackQuery):
                                          reply_markup=get_inline_keyboard_1())
     elif callback.data == "info_media":
         await callback.message.edit_text(MEDIA_COMMAND,
+                                         parse_mode="HTML",
+                                         disable_web_page_preview=True,
+                                         reply_markup=get_inline_keyboard_1())
+    elif callback.data == "info_online":
+        ip_address = "193.169.195.76"
+        port = 25565
+        message_text = await check_server(ip_address, port)
+        await callback.message.edit_text(message_text,
                                          parse_mode="HTML",
                                          disable_web_page_preview=True,
                                          reply_markup=get_inline_keyboard_1())
