@@ -24,6 +24,7 @@ from conf import CHANNEL_ID
 from keyboard import kb
 from keyboard import get_inline_keyboard_1
 from keyboard import get_inline_keyboard_2
+from keyboard import on_players_online_press
 from datetime import datetime
 from database import connect_to_db
 from database import get_user_info
@@ -32,6 +33,7 @@ from database import new_password_db
 from email_function import generate_confirmation_code
 from email_function import send_email
 from email_function import check_server
+from email_function import check_online
 
 #update_message_text - просто текст шо пише юзер
 #update.message.from_user - dict з username, last_name, is_bot and so on
@@ -92,7 +94,23 @@ async def start_command(message: types.Message) -> None:
                            text=f"<b>Добро пожаловать, {message.from_user.first_name} {message.from_user.last_name}!</b>",
                            parse_mode="HTML",
                            reply_markup=kb)
+        
+@dp.message_handler(text='Игроки онлайн 🌟')
+async def update_reply_keyboard(message: types.Message) -> None:
+   await bot.send_message(chat_id=message.from_user.id,
+                           text='<b>Игроки онлайн 🌟</b>',
+                           parse_mode="HTML",
+                           reply_markup=on_players_online_press())
+   await message.delete()
 
+@dp.message_handler(text='Назад 🔙')
+async def update_reply_keyboard_back(message: types.Message) -> None:
+   await bot.send_message(chat_id=message.from_user.id,
+                           text='<b>Главное меню 🧾</b>',
+                           parse_mode="HTML",
+                           reply_markup=kb)
+   await message.delete()
+  
 @dp.message_handler(text='Информация сервера 📱')
 async def server_info(message: types.Message) -> None:
     await bot.send_message(chat_id=message.from_user.id,
@@ -226,6 +244,28 @@ async def password_update(message: types.Message, state: FSMContext):
                                 parse_mode="HTML")
         await state.set_state('password_update_confirm')
       
+@dp.message_handler(text='Найти игрока по никнейму 🔍')
+async def player_info(message: types.Message, state: FSMContext):
+    await message.reply("<b>Пожалуйста, введите никнейм игрока!</b>",
+                        parse_mode="HTML")
+    await message.delete()
+    await state.set_state('online_check')
+
+@dp.message_handler(state="online_check")
+async def input_name(message: types.Message, state: FSMContext):
+    player_name = message.text
+    ip_address = "193.169.195.76" 
+    port = 25565
+    await state.update_data(player_name=player_name)
+    await state.reset_state()
+    
+    message_text = await check_online(ip_address, port, player_name)
+    await bot.send_message(chat_id=message.from_user.id,
+                           text=message_text,
+                           parse_mode="HTML")
+    
+    
+    
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('info'))
 async def ikb_cb_handler(callback: types.CallbackQuery):
  try:
@@ -240,7 +280,7 @@ async def ikb_cb_handler(callback: types.CallbackQuery):
                                          disable_web_page_preview=True,
                                          reply_markup=get_inline_keyboard_1())
     elif callback.data == "info_online":
-        ip_address = "193.169.195.76"
+        ip_address = "193.169.195.76" 
         port = 25565
         message_text = await check_server(ip_address, port)
         await callback.message.edit_text(message_text,
