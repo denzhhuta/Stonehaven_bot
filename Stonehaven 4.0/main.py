@@ -7,6 +7,7 @@ from email.message import EmailMessage
 from aiosmtplib import SMTP
 import time
 import os
+import string
 from aiogram import types, Bot, Dispatcher, executor
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.middlewares import BaseMiddleware
@@ -34,6 +35,7 @@ from email_function import generate_confirmation_code
 from email_function import send_email
 from email_function import check_server
 from email_function import check_online
+from email_function import check_whole_online
 
 #update_message_text - просто текст шо пише юзер
 #update.message.from_user - dict з username, last_name, is_bot and so on
@@ -95,6 +97,9 @@ async def start_command(message: types.Message) -> None:
                            parse_mode="HTML",
                            reply_markup=kb)
         
+######################################################################################################
+#Menu
+######################################################################################################
 @dp.message_handler(text='Игроки онлайн 🌟')
 async def update_reply_keyboard(message: types.Message) -> None:
    await bot.send_message(chat_id=message.from_user.id,
@@ -118,17 +123,29 @@ async def server_info(message: types.Message) -> None:
                            parse_mode="HTML",
                            reply_markup=get_inline_keyboard_1())
     await message.delete()
-
+    
+######################################################################################################
+#Player information
+######################################################################################################
 @dp.message_handler(text='Информация об игроках 👀')
 async def player_info(message: types.Message, state: FSMContext):
     msg = await bot.send_message(chat_id=message.from_user.id,
                            text="Пожалуйста, введите имя игрока")
     await message.delete()
     await state.set_state('await_input_nickname')
-    
+
 @dp.message_handler(state="await_input_nickname")
 async def input_name(message: types.Message, state: FSMContext):
     nickname = message.text
+    
+    allowed_chars = set(string.ascii_letters + "0123456789_-.")
+    if not 3 <= len(nickname) <= 16 or not all(c in allowed_chars for c in nickname):
+        await bot.send_message(chat_id=message.from_user.id,
+                               text="<b>😔 Некорректный никнейм. Пожалуйста, введите корректный никнейм </b>",
+                               parse_mode="HTML")
+        await state.reset_state()
+        return
+        
     await state.update_data(nickname=nickname)
     await state.reset_state()
     
@@ -136,7 +153,10 @@ async def input_name(message: types.Message, state: FSMContext):
     await bot.send_message(chat_id=message.from_user.id,
                            text=message_text,
                            parse_mode="HTML")
-    
+
+######################################################################################################
+#Password restoring
+######################################################################################################
 @dp.message_handler(text='Восстановление пароля 🔧')
 async def forgot_password_handle(message: types.Message, state:FSMContext):
     await message.reply("<b>Пожалуйста, введите email-адресс вашего аккаунта</b>",
@@ -243,7 +263,10 @@ async def password_update(message: types.Message, state: FSMContext):
                                 text="<b>Пароли не совпадают, повторите попытку</b>",
                                 parse_mode="HTML")
         await state.set_state('password_update_confirm')
-      
+        
+######################################################################################################
+#Server's online
+######################################################################################################      
 @dp.message_handler(text='Найти игрока по никнейму 🔍')
 async def player_info(message: types.Message, state: FSMContext):
     await message.reply("<b>Пожалуйста, введите никнейм игрока!</b>",
@@ -256,6 +279,15 @@ async def input_name(message: types.Message, state: FSMContext):
     player_name = message.text
     ip_address = "193.169.195.76" 
     port = 25565
+    
+    allowed_chars = set(string.ascii_letters + "0123456789_-.")
+    if not 3 <= len(player_name) <= 16 or not all(c in allowed_chars for c in player_name):
+        await bot.send_message(chat_id=message.from_user.id,
+                           text="<b>😔 Некорректный никнейм. Пожалуйста, введите корректный никнейм </b>",
+                           parse_mode="HTML")
+        await state.reset_state()
+        return
+    
     await state.update_data(player_name=player_name)
     await state.reset_state()
     
@@ -263,9 +295,20 @@ async def input_name(message: types.Message, state: FSMContext):
     await bot.send_message(chat_id=message.from_user.id,
                            text=message_text,
                            parse_mode="HTML")
+
+@dp.message_handler(text='Посмотреть полный лист игроков 📃')
+async def player_info(message: types.Message, state: FSMContext):
+    ip_address = "193.169.195.76" 
+    port = 25565
+    message_text = await check_whole_online(ip_address, port)
     
+    await bot.send_message(chat_id=message.from_user.id,
+                           text=message_text,
+                           parse_mode="HTML")
     
-    
+######################################################################################################
+#Callbacks (for server's online and general information)
+######################################################################################################     
 @dp.callback_query_handler(lambda callback_query: callback_query.data.startswith('info'))
 async def ikb_cb_handler(callback: types.CallbackQuery):
  try:

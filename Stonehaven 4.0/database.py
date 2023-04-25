@@ -70,7 +70,7 @@ async def get_user_info(nickname):
             )
         return message_text
     else:
-        return '<b>Пользователь не найден. Пожалуйста, проверьте учетные данные!</b>'
+        return '<b>😔 Пользователь не найден. Пожалуйста, проверьте учетные данные!</b>'
 
 #Перевірка чи емейл валідний.
 async def is_valid_email(email):
@@ -139,4 +139,3 @@ async def logs_handler(email, counter=[0]):
 #         conn.close()
 #     except Exception as e:
 #         print(f"An error occurred while updating the password for email {email}: {e}")
-

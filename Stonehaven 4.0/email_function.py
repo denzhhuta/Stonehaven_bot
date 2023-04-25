@@ -113,8 +113,6 @@ async def check_server(ip_address, port):
     return message_text
             
         
-        
-
 async def check_online(ip_address, port, player_name):
     try:
         server = JavaServer.lookup(f"{ip_address}:{port}")
@@ -132,7 +130,22 @@ async def check_online(ip_address, port, player_name):
 
     return message_text
 
+async def check_whole_online(ip_address, port):
+    try:
+        server = JavaServer.lookup(f"{ip_address}:{port}")
+        query = server.query()
 
+        if query.players:
+            message_text = "<b>Сейчас на сервере:</b>\n"
+            for player in query.players.names:
+                message_text += f"- {player}\n"
+        else:
+            message_text = "<b>Сейчас на сервере нет игроков!</b>"
+            
+        return message_text
+            
+    except Exception as e:
+        return f"<b>❌ Ошибка при проверке онлайна: {e}</b>"
     
     
  
