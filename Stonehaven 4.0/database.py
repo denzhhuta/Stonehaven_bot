@@ -22,7 +22,20 @@ async def connect_to_db():
     except Exception as ex:
         print("Connection to DataBase refused...")
         print(ex)
+
+#фунція перевірки чи є нік в бд
+async def nickname_check(player_name: str) -> bool:
+    conn = await connect_to_db()
+    async with conn.cursor() as cursor:
+        sql = "SELECT * FROM authme WHERE username = %s"
+        await cursor.execute(sql, (player_name,))
+        result = await cursor.fetchone()
+        if result is not None:
+            return True
+        else:
+            return False 
         
+                  
 #функція запиту з бази даних (інформація про гравця)
 async def get_user_info(nickname):
     conn = await connect_to_db()

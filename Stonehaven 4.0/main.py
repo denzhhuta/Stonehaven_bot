@@ -8,6 +8,7 @@ from aiosmtplib import SMTP
 import time
 import os
 import string
+import re
 from aiogram import types, Bot, Dispatcher, executor
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.middlewares import BaseMiddleware
@@ -26,16 +27,20 @@ from keyboard import kb
 from keyboard import get_inline_keyboard_1
 from keyboard import get_inline_keyboard_2
 from keyboard import on_players_online_press
+from keyboard import server_rcon
 from datetime import datetime
 from database import connect_to_db
 from database import get_user_info
 from database import is_valid_email
 from database import new_password_db
+from database import nickname_check
 from email_function import generate_confirmation_code
 from email_function import send_email
 from email_function import check_server
 from email_function import check_online
 from email_function import check_whole_online
+from rcon_commands import *
+
 
 #update_message_text - просто текст шо пише юзер
 #update.message.from_user - dict з username, last_name, is_bot and so on
@@ -61,7 +66,7 @@ class CheckSubscriptionUserMiddleware(BaseMiddleware):
             
         if this_user is not None:
             get_prefix = self.prefix
-            
+        
             if not this_user.is_bot:
                 user_id = this_user.id
                 #print(user_id)
@@ -123,6 +128,15 @@ async def server_info(message: types.Message) -> None:
                            parse_mode="HTML",
                            reply_markup=get_inline_keyboard_1())
     await message.delete()
+
+@dp.message_handler(text='Управление сервером')
+async def server_info(message: types.Message) -> None:
+    await bot.send_message(chat_id=message.from_user.id,
+                           text='<b>Меню управления сервером</b>',
+                           parse_mode="HTML",
+                           reply_markup=server_rcon())
+    await message.delete()
+
     
 ######################################################################################################
 #Player information
@@ -138,7 +152,7 @@ async def player_info(message: types.Message, state: FSMContext):
 async def input_name(message: types.Message, state: FSMContext):
     nickname = message.text
     
-    allowed_chars = set(string.ascii_letters + "0123456789_-.")
+    allowed_chars = set(string.ascii_letters + "0123456789_")
     if not 3 <= len(nickname) <= 16 or not all(c in allowed_chars for c in nickname):
         await bot.send_message(chat_id=message.from_user.id,
                                text="<b>😔 Некорректный никнейм. Пожалуйста, введите корректный никнейм </b>",
@@ -167,12 +181,21 @@ async def forgot_password_handle(message: types.Message, state:FSMContext):
 @dp.message_handler(state="input_email")
 async def input_name(message: types.Message, state: FSMContext):
     email = message.text
+    #Just regex in
+    regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(regex, email):
+        await bot.send_message(chat_id=message.from_user.id,
+                              text="<b>🙁 Извините, <em>электронная почта</em> недействительна!</b>\n\n<b>🔍 Перепроверьте правильность ввода!</b>",
+                              parse_mode="HTML")
+        await state.reset_state()
+        return
+        
     await state.update_data(email=email)
     #print("CHINAAA " + email)    
     #await state.reset_state()
     if not await is_valid_email(email):
           await bot.send_message(chat_id=message.from_user.id,
-                                text="<b>🙁 Извините, <em>электронная почта</em> недействительна!</b>\n\n<b>🔍 Перепроверьте правильность ввода!</b>",
+                                text="<b>🙁 Извините, <em>электронная почта</em> не найдена в базе данных!</b>\n\n<b>🔍 Перепроверьте правильность ввода!</b>",
                                 parse_mode="HTML")
           await state.reset_state()
           return
@@ -280,7 +303,7 @@ async def input_name(message: types.Message, state: FSMContext):
     ip_address = "193.169.195.76" 
     port = 25565
     
-    allowed_chars = set(string.ascii_letters + "0123456789_-.")
+    allowed_chars = set(string.ascii_letters + "0123456789_")
     if not 3 <= len(player_name) <= 16 or not all(c in allowed_chars for c in player_name):
         await bot.send_message(chat_id=message.from_user.id,
                            text="<b>😔 Некорректный никнейм. Пожалуйста, введите корректный никнейм </b>",
@@ -305,7 +328,73 @@ async def player_info(message: types.Message, state: FSMContext):
     await bot.send_message(chat_id=message.from_user.id,
                            text=message_text,
                            parse_mode="HTML")
-    
+######################################################################################################
+#RCON
+######################################################################################################
+
+@dp.message_handler(text='Забанить игрока')
+async def ban_player_handler(message: types.Message, state: FSMContext):
+    await bot.send_message(chat_id=message.chat.id, 
+                           text='Введите ник игрока которого нужно забанить и причину через пробел')
+    await message.delete()
+    await state.set_state("finish_ban_player")
+
+@dp.message_handler(state="finish_ban_player")
+async def ban_finish(message:types.Message, state: FSMContext):
+    player_name_reason = message.text
+    regex = r'^[A-Za-z0-9_]+\s[A-Za-z0-9_ ]+$'
+    if re.match(regex, player_name_reason):
+        player_name, reason = player_name_reason.split()
+        if await nickname_check(player_name):
+            response = ban_player(player_name, reason)
+            await state.reset_state()
+            await bot.send_message(chat_id = message.from_user.id,
+                                text= f"{player_name} was banned for {reason}",
+                                parse_mode="HTML")
+        else:
+            await bot.send_message(chat_id=message.from_user.id,
+                                        text=f"{player_name} is not a valid player name.",
+                                        parse_mode="HTML")
+            await state.reset_state()
+            
+    else:
+        await bot.send_message(chat_id=message.chat.id,
+                               text="Некорректный формат ввода. Введите ник игрока и причину через пробел",
+                               parse_mode="HTML")
+        await state.reset_state()
+        
+@dp.message_handler(text='Кикнуть игрока')
+async def kick_player_handler(message: types.Message, state: FSMContext):
+    await bot.send_message(chat_id=message.chat.id, 
+                           text='<b>Введите ник игрока которого нужно кикнуть и причину через пробел</b>')
+    await message.delete()
+    await state.set_state("finish_kick_player")
+
+@dp.message_handler(state='finish_kick_player')
+async def kick_finish(message: types.Message, state: FSMContext):
+    player_name_reason = message.text
+    regex = r'^[A-Za-z0-9_]+\s[A-Za-z0-9_ ]+$'
+    if re.match(regex, player_name_reason):
+        player_name, reason = player_name_reason.split()
+        if await nickname_check(player_name):
+            response = kick_player(player_name, reason)
+            await state.reset_state()
+            await bot.send_message(chat_id = message.from_user.id,
+                                text= f"{player_name} was kicked for {reason}",
+                                parse_mode="HTML")
+        else:
+            await bot.send_message(chat_id=message.from_user.id,
+                                        text=f"{player_name} is not a valid player name.",
+                                        parse_mode="HTML")
+            await state.reset_state()
+                
+    else:
+        await bot.send_message(chat_id=message.chat.id,
+                               text="Некорректный формат ввода. Введите ник игрока и причину через пробел",
+                               parse_mode="HTML")
+        await state.reset_state()
+        
+
 ######################################################################################################
 #Callbacks (for server's online and general information)
 ######################################################################################################     
